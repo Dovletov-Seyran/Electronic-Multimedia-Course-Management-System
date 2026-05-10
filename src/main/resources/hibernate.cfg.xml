@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC
+        "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+
+<hibernate-configuration>
+    <session-factory>
+        <!-- Подключение к PostgreSQL в Docker -->
+        <property name="hibernate.connection.driver_class">org.postgresql.Driver</property>
+        <property name="hibernate.connection.url">jdbc:postgresql://localhost:5432/emk</property>
+        <property name="hibernate.connection.username">postgres</property>
+        <property name="hibernate.connection.password">labs</property>
+
+        <!-- Диалект PostgreSQL -->
+        <property name="hibernate.dialect">org.hibernate.dialect.PostgreSQLDialect</property>
+
+        <!-- Автосоздание таблиц по Entity-классам -->
+        <property name="hibernate.hbm2ddl.auto">update</property>
+
+        <!-- Показывать SQL в консоли -->
+        <property name="hibernate.show_sql">true</property>
+        <property name="hibernate.format_sql">true</property>
+
+        <!-- Кодировка -->
+        <property name="hibernate.connection.charSet">UTF-8</property>
+
+        <!-- Entity-классы -->
+        <mapping class="ru.bmstu.emk.domain.User"/>
+        <mapping class="ru.bmstu.emk.domain.Teacher"/>
+        <mapping class="ru.bmstu.emk.domain.Hosting"/>
+        <mapping class="ru.bmstu.emk.domain.Course"/>
+        <mapping class="ru.bmstu.emk.domain.Module"/>
+        <mapping class="ru.bmstu.emk.domain.Lesson"/>
+        <mapping class="ru.bmstu.emk.domain.ProgressTrack"/>
+    </session-factory>
+</hibernate-configuration>
