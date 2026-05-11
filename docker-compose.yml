@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: emk-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: emk
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: labs
+    ports:
+      - "5432:5432"
+    volumes:
+      - emk_pgdata:/var/lib/postgresql/data
+
+volumes:
+  emk_pgdata:
