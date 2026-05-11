@@ -19,6 +19,32 @@ object AuthService {
         }
     }
 
+    fun register(login: String, password: String, role: String): User? {
+        val session = HibernateUtil.sessionFactory.openSession()
+        val tx = session.beginTransaction()
+        return try {
+            // check if login already exists
+            val existing = session.createQuery(
+                "FROM User u WHERE u.login = :login", User::class.java
+            ).setParameter("login", login).uniqueResult()
+            if (existing != null) return null
+
+            val user = User().apply {
+                this.login = login
+                this.password = password
+                this.role = role
+            }
+            session.persist(user)
+            tx.commit()
+            user
+        } catch (e: Exception) {
+            tx.rollback()
+            null
+        } finally {
+            session.close()
+        }
+    }
+
     fun getTeacherByUser(user: User): Teacher? {
         val session = HibernateUtil.sessionFactory.openSession()
         return try {

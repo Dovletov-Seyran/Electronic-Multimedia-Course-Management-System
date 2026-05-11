@@ -21,7 +21,6 @@ class AdminDashboard : HBox() {
         }
 
         val logoBox = VBox(4.0,
-            Label("⚙️").apply { style = "-fx-font-size: 28px;" },
             Label("Администратор").apply { styleClass.add("label-heading") },
             Label(SessionManager.currentUser?.login ?: "").apply { styleClass.add("label-muted") }
         ).apply {
@@ -29,15 +28,10 @@ class AdminDashboard : HBox() {
             style = "-fx-border-color: #3d3d5c; -fx-border-width: 0 0 1 0;"
         }
 
-        val menuItems = listOf(
-            "📊" to "Сводка",
-            "🏠" to "Хостинги",
-            "📚" to "Курсы",
-            "👥" to "Ученики",
-        )
+        val menuItems = listOf("Сводка", "Хостинги", "Курсы", "Ученики")
 
-        val menuButtons = menuItems.map { (icon, label) ->
-            Button("$icon  $label").apply {
+        val menuButtons = menuItems.map { label ->
+            Button(label).apply {
                 styleClass.addAll("sidebar-item")
                 setOnAction {
                     setActiveButton(this)
@@ -51,7 +45,7 @@ class AdminDashboard : HBox() {
             }
         }
 
-        val logoutBtn = Button("🚪  Выйти").apply {
+        val logoutBtn = Button("Выйти").apply {
             styleClass.addAll("sidebar-item"); style = "-fx-text-fill: #f87171;"
             setOnAction { SessionManager.logout(); EmkApplication.navigateTo(RoleSelectScreen()) }
         }
@@ -72,7 +66,7 @@ class AdminDashboard : HBox() {
 
     private fun showSummary() {
         val container = VBox(24.0).apply { padding = Insets(32.0) }
-        val header = Label("📊 Сводная аналитика").apply { styleClass.add("label-title") }
+        val header = Label("Сводная аналитика").apply { styleClass.add("label-title") }
 
         val totalStudents = AdminService.getTotalStudents()
         val totalTeachers = AdminService.getTotalTeachers()
@@ -96,7 +90,7 @@ class AdminDashboard : HBox() {
         ).apply { alignment = Pos.CENTER_LEFT }
 
         // Сводка по хостингам
-        val platformLabel = Label("📡 Платформы").apply { styleClass.add("label-subtitle"); padding = Insets(8.0, 0.0, 0.0, 0.0) }
+        val platformLabel = Label("Платформы").apply { styleClass.add("label-subtitle"); padding = Insets(8.0, 0.0, 0.0, 0.0) }
         val platformStats = AdminService.getPlatformStats()
         val platformTable = TableView<PlatformStats>().apply {
             prefHeight = 250.0
@@ -122,9 +116,9 @@ class AdminDashboard : HBox() {
 
     private fun showHostings() {
         val container = VBox(20.0).apply { padding = Insets(32.0) }
-        val header = Label("🏠 Управление хостингами").apply { styleClass.add("label-title") }
+        val header = Label("Управление хостингами").apply { styleClass.add("label-title") }
 
-        val addBtn = Button("＋ Добавить хостинг").apply {
+        val addBtn = Button("+ Добавить хостинг").apply {
             styleClass.addAll("button", "btn-primary")
             setOnAction { showHostingForm(null) }
         }
@@ -138,11 +132,11 @@ class AdminDashboard : HBox() {
             val nameLabel = Label(h.name).apply { styleClass.add("label-heading") }
             val urlLabel = Label(h.webAddress).apply { styleClass.add("label-secondary"); isWrapText = true; maxWidth = 240.0 }
 
-            val editBtn = Button("✏️ Редактировать").apply {
+            val editBtn = Button("Редактировать").apply {
                 styleClass.addAll("button"); maxWidth = Double.MAX_VALUE
                 setOnAction { showHostingForm(h.id) }
             }
-            val deleteBtn = Button("🗑 Удалить").apply {
+            val deleteBtn = Button("Удалить").apply {
                 styleClass.addAll("button", "btn-danger"); maxWidth = Double.MAX_VALUE
                 setOnAction {
                     val (success, msg) = AdminService.deleteHosting(h.id)
@@ -182,7 +176,7 @@ class AdminDashboard : HBox() {
         val nameField = TextField(currentName).apply { promptText = "Название платформы" }
         val urlField = TextField(currentUrl).apply { promptText = "Веб-адрес (URL)" }
 
-        val saveBtn = Button(if (isEdit) "💾 Сохранить" else "💾 Создать").apply {
+        val saveBtn = Button(if (isEdit) "Сохранить" else "Создать").apply {
             styleClass.addAll("button", "btn-primary"); prefWidth = 300.0
             setOnAction {
                 val n = nameField.text.trim(); val u = urlField.text.trim()
@@ -202,7 +196,7 @@ class AdminDashboard : HBox() {
 
     private fun showCourses() {
         val container = VBox(20.0).apply { padding = Insets(32.0) }
-        val header = Label("📚 Все курсы — аналитика").apply { styleClass.add("label-title") }
+        val header = Label("Все курсы — аналитика").apply { styleClass.add("label-title") }
 
         val courseStats = AdminService.getCourseStats()
         val subtitle = Label("Всего курсов: ${courseStats.size}").apply { styleClass.add("label-secondary") }
@@ -234,13 +228,23 @@ class AdminDashboard : HBox() {
             items.addAll(courseStats)
         }
 
-        container.children.addAll(header, subtitle, table)
+        val searchField = TextField().apply { promptText = "Поиск по курсу, преподавателю или хостингу..."; prefWidth = 350.0 }
+        searchField.textProperty().addListener { _, _, newVal ->
+            val filtered = courseStats.filter {
+                it.courseName.contains(newVal, ignoreCase = true) ||
+                it.teacherName.contains(newVal, ignoreCase = true) ||
+                it.hostingName.contains(newVal, ignoreCase = true)
+            }
+            table.items.setAll(filtered)
+        }
+
+        container.children.addAll(header, subtitle, searchField, table)
         contentArea.children.setAll(ScrollPane(container).apply { isFitToWidth = true })
     }
 
     private fun showStudents() {
         val container = VBox(20.0).apply { padding = Insets(32.0) }
-        val header = Label("👥 Все ученики").apply { styleClass.add("label-title") }
+        val header = Label("Все ученики").apply { styleClass.add("label-title") }
 
         val students = AdminService.getAllStudents()
         val subtitle = Label("Всего учеников: ${students.size}").apply { styleClass.add("label-secondary") }

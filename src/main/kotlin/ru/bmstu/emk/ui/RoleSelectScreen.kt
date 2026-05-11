@@ -11,108 +11,60 @@ class RoleSelectScreen : VBox() {
 
     init {
         alignment = Pos.CENTER
-        spacing = 20.0
-        padding = Insets(60.0)
-        styleClass.add("root")
+        spacing = 0.0
+        padding = Insets(0.0)
 
-        // Логотип / заголовок
-        val logo = Label("🎓").apply { style = "-fx-font-size: 64px;" }
-        val title = Label("АИС ЭМК").apply { styleClass.add("label-title") }
-        val subtitle = Label("Система управления электронными мультимедийными курсами").apply {
+        val centerBox = VBox(32.0).apply {
+            alignment = Pos.CENTER
+            maxWidth = 420.0
+        }
+
+        val title = Label("АИС ЭМК").apply {
+            style = "-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #dfe6ee;"
+        }
+        val subtitle = Label("Система управления электронными\nмультимедийными курсами").apply {
             styleClass.add("label-secondary")
-            style = "-fx-font-size: 15px;"
+            style = "-fx-text-alignment: center; -fx-font-size: 13px;"
         }
-        val uni = Label("МГТУ им. Н.Э. Баумана").apply {
-            styleClass.add("label-muted")
-        }
+        val headerBox = VBox(8.0, title, subtitle).apply { alignment = Pos.CENTER }
 
-        val headerBox = VBox(8.0, logo, title, subtitle, uni).apply {
-            alignment = Pos.CENTER
-            padding = Insets(0.0, 0.0, 30.0, 0.0)
-        }
-
-        // Карточки ролей
-        val rolesBox = HBox(20.0).apply {
-            alignment = Pos.CENTER
+        val rolesBox = VBox(0.0).apply {
+            style = "-fx-background-color: #1c1d2b; -fx-background-radius: 8; -fx-border-color: #2a2b3d; -fx-border-radius: 8;"
         }
 
         val roles = listOf(
-            Triple("👨‍🎓", "Ученик", "Проходите курсы и отслеживайте прогресс"),
-            Triple("👨‍🏫", "Преподаватель", "Создавайте курсы и следите за студентами"),
-            Triple("⚙️", "Администратор", "Управляйте платформой и аналитикой"),
+            Triple("Ученик", "Проходите курсы и отслеживайте прогресс", "STUDENT"),
+            Triple("Преподаватель", "Создавайте курсы и следите за студентами", "TEACHER"),
+            Triple("Администратор", "Управляйте платформой и аналитикой", "ADMIN"),
         )
 
-        for ((icon, roleName, desc) in roles) {
-            val card = createRoleCard(icon, roleName, desc)
-            rolesBox.children.add(card)
-        }
+        for ((i, triple) in roles.withIndex()) {
+            val (roleName, desc, roleCode) = triple
+            val row = HBox(12.0).apply {
+                alignment = Pos.CENTER_LEFT
+                padding = Insets(14.0, 20.0, 14.0, 20.0)
+                style = if (i < roles.size - 1) "-fx-border-color: #222336; -fx-border-width: 0 0 1 0;" else ""
+                styleClass.add("list-row")
+                cursor = javafx.scene.Cursor.HAND
 
-        // Нижняя часть
-        val infoBtn = Button("ℹ Информация о создателе").apply {
-            styleClass.addAll("button", "btn-ghost")
-            setOnAction { showAuthorInfo() }
-        }
+                val textBox = VBox(2.0,
+                    Label(roleName).apply { style = "-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #dfe6ee;" },
+                    Label(desc).apply { style = "-fx-font-size: 13px; -fx-text-fill: #5f6a7a;" }
+                ).apply { HBox.setHgrow(this, Priority.ALWAYS) }
 
-        val exitBtn = Button("Выход").apply {
-            styleClass.addAll("button")
-            setOnAction { javafx.application.Platform.exit() }
-        }
-
-        val bottomBox = HBox(16.0, infoBtn, exitBtn).apply {
-            alignment = Pos.CENTER
-            padding = Insets(30.0, 0.0, 0.0, 0.0)
-        }
-
-        children.addAll(headerBox, rolesBox, bottomBox)
-    }
-
-    private fun createRoleCard(icon: String, roleName: String, desc: String): VBox {
-        val iconLabel = Label(icon).apply { style = "-fx-font-size: 48px;" }
-        val nameLabel = Label(roleName).apply { styleClass.add("label-subtitle") }
-        val descLabel = Label(desc).apply {
-            styleClass.add("label-secondary")
-            isWrapText = true
-            maxWidth = 200.0
-            style = "-fx-text-alignment: center;"
-        }
-        val enterBtn = Button("Войти →").apply {
-            styleClass.addAll("button", "btn-primary")
-            maxWidth = Double.MAX_VALUE
-            setOnAction {
-                val role = when (roleName) {
-                    "Ученик" -> "STUDENT"
-                    "Преподаватель" -> "TEACHER"
-                    "Администратор" -> "ADMIN"
-                    else -> "STUDENT"
-                }
-                EmkApplication.navigateTo(LoginScreen(role))
+                children.addAll(textBox)
+                setOnMouseClicked { EmkApplication.navigateTo(LoginScreen(roleCode)) }
             }
+            rolesBox.children.add(row)
         }
 
-        return VBox(16.0, iconLabel, nameLabel, descLabel, enterBtn).apply {
-            alignment = Pos.CENTER
-            styleClass.add("card")
-            padding = Insets(30.0)
-            prefWidth = 260.0
-            prefHeight = 320.0
-        }
-    }
+        val footer = VBox(12.0,
+            Label("МГТУ им. Н.Э. Баумана · ИУ5-35Б · Довлетов С.").apply {
+                style = "-fx-text-fill: #3a3b50; -fx-font-size: 11px;"
+            }
+        ).apply { alignment = Pos.CENTER; padding = Insets(24.0, 0.0, 0.0, 0.0) }
 
-    private fun showAuthorInfo() {
-        val alert = javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION)
-        alert.title = "Информация о создателе"
-        alert.headerText = "АИС ЭМК"
-        alert.contentText = """
-            Разработчик: Довлетов Сейран
-            Группа: ИУ5-35Б
-            МГТУ им. Н.Э. Баумана
-            Кафедра ИУ-5 «Системы обработки информации и управления»
-            2025 г.
-        """.trimIndent()
-        alert.dialogPane.style = """
-            -fx-background-color: #2a2a3d;
-        """
-        alert.dialogPane.lookup(".content.label")?.style = "-fx-text-fill: #e4e4ef;"
-        alert.showAndWait()
+        centerBox.children.addAll(headerBox, rolesBox, footer)
+        children.add(centerBox)
     }
 }

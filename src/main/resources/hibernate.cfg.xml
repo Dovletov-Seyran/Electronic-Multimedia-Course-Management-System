@@ -32,5 +32,6 @@
         <mapping class="ru.bmstu.emk.domain.Module"/>
         <mapping class="ru.bmstu.emk.domain.Lesson"/>
         <mapping class="ru.bmstu.emk.domain.ProgressTrack"/>
+        <mapping class="ru.bmstu.emk.domain.Message"/>
     </session-factory>
 </hibernate-configuration>
