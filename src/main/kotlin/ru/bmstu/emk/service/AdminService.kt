@@ -152,4 +152,87 @@ object AdminService {
             session.createQuery("FROM User u WHERE u.role = 'STUDENT' ORDER BY u.login", User::class.java).resultList
         } finally { session.close() }
     }
+
+    fun getAllUsers(): List<User> {
+        val session = HibernateUtil.sessionFactory.openSession()
+        return try {
+            session.createQuery("FROM User u ORDER BY u.login", User::class.java).resultList
+        } finally { session.close() }
+    }
+
+    fun promoteToTeacher(userId: Long, fullName: String, email: String): Boolean {
+        val session = HibernateUtil.sessionFactory.openSession()
+        val tx = session.beginTransaction()
+        return try {
+            val user = session.get(User::class.java, userId) ?: return false
+            user.role = "TEACHER"
+            session.merge(user)
+
+            val teacher = Teacher().apply {
+                this.fullName = fullName
+                this.email = email
+                this.user = user
+            }
+            session.persist(teacher)
+            tx.commit()
+            true
+        } catch (e: Exception) { tx.rollback(); false }
+        finally { session.close() }
+    }
+
+    fun promoteToAdmin(userId: Long): Boolean {
+        val session = HibernateUtil.sessionFactory.openSession()
+        val tx = session.beginTransaction()
+        return try {
+            val user = session.get(User::class.java, userId) ?: return false
+
+            // Если был преподавателем — удаляем Teacher запись (если нет курсов)
+            if (user.role == "TEACHER") {
+                val teacher = session.createQuery(
+                    "FROM Teacher t WHERE t.user.id = :uid", Teacher::class.java
+                ).setParameter("uid", userId).uniqueResult()
+                if (teacher != null) {
+                    val courseCount = session.createQuery(
+                        "SELECT COUNT(c) FROM Course c WHERE c.teacher.id = :tid", Long::class.java
+                    ).setParameter("tid", teacher.id).singleResult
+                    if (courseCount > 0) return false
+                    session.remove(teacher)
+                }
+            }
+
+            user.role = "ADMIN"
+            session.merge(user)
+            tx.commit()
+            true
+        } catch (e: Exception) { tx.rollback(); false }
+        finally { session.close() }
+    }
+
+    fun demoteToStudent(userId: Long): Boolean {
+        val session = HibernateUtil.sessionFactory.openSession()
+        val tx = session.beginTransaction()
+        return try {
+            val user = session.get(User::class.java, userId) ?: return false
+
+            // Удаляем запись Teacher если есть
+            val teacher = session.createQuery(
+                "FROM Teacher t WHERE t.user.id = :uid", Teacher::class.java
+            ).setParameter("uid", userId).uniqueResult()
+
+            if (teacher != null) {
+                // Проверяем, нет ли курсов у преподавателя
+                val courseCount = session.createQuery(
+                    "SELECT COUNT(c) FROM Course c WHERE c.teacher.id = :tid", Long::class.java
+                ).setParameter("tid", teacher.id).singleResult
+                if (courseCount > 0) return false // Нельзя понизить — есть курсы
+                session.remove(teacher)
+            }
+
+            user.role = "STUDENT"
+            session.merge(user)
+            tx.commit()
+            true
+        } catch (e: Exception) { tx.rollback(); false }
+        finally { session.close() }
+    }
 }

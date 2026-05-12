@@ -8,59 +8,68 @@ import ru.bmstu.emk.EmkApplication
 import ru.bmstu.emk.service.AuthService
 import ru.bmstu.emk.util.SessionManager
 
-class LoginScreen(private val expectedRole: String) : VBox() {
+class LoginScreen : VBox() {
 
     private val loginField = TextField().apply { promptText = "Логин" }
     private val passwordField = PasswordField().apply { promptText = "Пароль" }
-    private val errorLabel = Label().apply { style = "-fx-text-fill: #e17055; -fx-font-size: 12px;"; isVisible = false }
+    private val errorLabel = Label().apply { style = "-fx-text-fill: #e17055; -fx-font-size: 13px;"; isVisible = false }
 
     init {
         alignment = Pos.CENTER
-        val roleName = when (expectedRole) { "STUDENT" -> "Ученик"; "TEACHER" -> "Преподаватель"; "ADMIN" -> "Администратор"; else -> "" }
 
         val formBox = VBox(16.0).apply {
-            maxWidth = 340.0
+            maxWidth = 360.0
             alignment = Pos.CENTER_LEFT
             style = "-fx-background-color: #1c1d2b; -fx-background-radius: 8; -fx-border-color: #2a2b3d; -fx-border-radius: 8;"
             padding = Insets(32.0)
         }
 
-        val title = Label("Вход · $roleName").apply { style = "-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #dfe6ee;" }
+        val title = Label("АИС ЭМК").apply {
+            style = "-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #dfe6ee;"
+        }
+        val subtitle = Label("Система управления электронными\nмультимедийными курсами").apply {
+            styleClass.add("label-secondary")
+            style = "-fx-text-alignment: center; -fx-font-size: 13px;"
+        }
+        val headerBox = VBox(6.0, title, subtitle).apply { alignment = Pos.CENTER }
 
         val loginBtn = Button("Войти").apply {
             styleClass.addAll("button", "btn-primary"); maxWidth = Double.MAX_VALUE; prefHeight = 36.0
             setOnAction { doLogin() }
         }
 
-        val backBtn = Button("← Назад").apply {
-            styleClass.addAll("button", "btn-ghost")
-            setOnAction { EmkApplication.navigateTo(RoleSelectScreen()) }
+        val registerBtn = Button("Регистрация").apply {
+            styleClass.addAll("button", "btn-ghost"); maxWidth = Double.MAX_VALUE
+            setOnAction { EmkApplication.navigateTo(RegisterScreen()) }
+        }
+
+        val forgotBtn = Button("Забыли пароль?").apply {
+            styleClass.addAll("button", "btn-ghost"); maxWidth = Double.MAX_VALUE
+            style = "-fx-font-size: 12px;"
+            setOnAction { EmkApplication.navigateTo(ForgotPasswordScreen()) }
         }
 
         passwordField.setOnAction { doLogin() }
         loginField.setOnAction { passwordField.requestFocus() }
 
         formBox.children.addAll(
-            title,
-            Region().apply { prefHeight = 8.0 },
+            headerBox,
+            Region().apply { prefHeight = 12.0 },
             Label("Логин").apply { styleClass.add("label-heading") }, loginField,
             Label("Пароль").apply { styleClass.add("label-heading") }, passwordField,
             errorLabel,
             Region().apply { prefHeight = 4.0 },
-            loginBtn
+            loginBtn,
+            registerBtn,
+            forgotBtn
         )
 
-        if (expectedRole == "STUDENT") {
-            val registerBtn = Button("Регистрация").apply {
-                styleClass.addAll("button", "btn-ghost"); maxWidth = Double.MAX_VALUE
-                setOnAction { EmkApplication.navigateTo(RegisterScreen()) }
-            }
-            formBox.children.add(registerBtn)
+        val footer = Label("МГТУ им. Н.Э. Баумана · ИУ5-45Б · Довлетов С.").apply {
+            style = "-fx-text-fill: #3a3b50; -fx-font-size: 11px;"
         }
+        val footerBox = VBox(footer).apply { alignment = Pos.CENTER; padding = Insets(20.0, 0.0, 0.0, 0.0) }
 
-        formBox.children.add(backBtn)
-
-        children.add(formBox)
+        children.addAll(formBox, footerBox)
         javafx.application.Platform.runLater { loginField.requestFocus() }
     }
 
@@ -72,10 +81,6 @@ class LoginScreen(private val expectedRole: String) : VBox() {
 
         val user = AuthService.login(login, password)
         if (user == null) { showError("Неверный логин или пароль"); return }
-        if (user.role != expectedRole) {
-            showError("Этот аккаунт не для роли «${when (expectedRole) { "STUDENT" -> "Ученик"; "TEACHER" -> "Преподаватель"; else -> "Администратор" }}»")
-            return
-        }
 
         SessionManager.currentUser = user
         if (user.role == "TEACHER") SessionManager.currentTeacher = AuthService.getTeacherByUser(user)

@@ -4,7 +4,6 @@ import javafx.application.Application
 import javafx.scene.Scene
 import javafx.stage.Stage
 import ru.bmstu.emk.ui.LoginScreen
-import ru.bmstu.emk.ui.RoleSelectScreen
 import ru.bmstu.emk.util.DataSeeder
 import ru.bmstu.emk.util.HibernateUtil
 
@@ -22,7 +21,7 @@ class EmkApplication : Application() {
     override fun start(stage: Stage) {
         primaryStage = stage
 
-        val root = RoleSelectScreen()
+        val root = LoginScreen()
         mainScene = Scene(root, 1200.0, 750.0)
 
         // Подключаем тёмную тему

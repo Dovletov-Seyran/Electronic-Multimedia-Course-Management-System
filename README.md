@@ -90,7 +90,6 @@ emk/
 │   │   ├── AdminService.kt
 │   │   └── MessageService.kt
 │   ├── ui/                          # Экраны интерфейса
-│   │   ├── RoleSelectScreen.kt
 │   │   ├── LoginScreen.kt
 │   │   ├── RegisterScreen.kt
 │   │   ├── AdminDashboard.kt

@@ -36,7 +36,7 @@ class RegisterScreen : VBox() {
 
         val backBtn = Button("← Назад ко входу").apply {
             styleClass.addAll("button", "btn-ghost")
-            setOnAction { EmkApplication.navigateTo(LoginScreen("STUDENT")) }
+            setOnAction { EmkApplication.navigateTo(LoginScreen()) }
         }
 
         confirmField.setOnAction { doRegister() }

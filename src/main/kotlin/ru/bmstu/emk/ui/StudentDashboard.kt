@@ -6,6 +6,7 @@ import javafx.scene.control.*
 import javafx.scene.layout.*
 import ru.bmstu.emk.EmkApplication
 import ru.bmstu.emk.domain.Course
+import ru.bmstu.emk.service.AuthService
 import ru.bmstu.emk.service.CourseService
 import ru.bmstu.emk.service.MessageService
 import ru.bmstu.emk.service.ProgressService
@@ -34,7 +35,7 @@ class StudentDashboard : HBox() {
         ).apply { padding = Insets(20.0, 16.0, 16.0, 16.0); style = "-fx-border-color: #2a2b3d; -fx-border-width: 0 0 1 0;" }
 
         val menuBox = VBox(2.0).apply { padding = Insets(8.0) }
-        val items = listOf("Мои курсы", "Каталог", "Прогресс", "Чат")
+        val items = listOf("Мои курсы", "Каталог", "Прогресс", "Чат", "Профиль")
         val buttons = items.map { label ->
             Button(label).apply {
                 styleClass.add("sidebar-item"); maxWidth = Double.MAX_VALUE
@@ -45,6 +46,7 @@ class StudentDashboard : HBox() {
                         "Каталог" -> showCatalog()
                         "Прогресс" -> showProgress()
                         "Чат" -> showChat()
+                        "Профиль" -> showProfile()
                     }
                 }
             }
@@ -54,7 +56,7 @@ class StudentDashboard : HBox() {
         val spacer = Region().apply { VBox.setVgrow(this, Priority.ALWAYS) }
         val logoutBtn = Button("Выйти").apply {
             styleClass.add("sidebar-item"); maxWidth = Double.MAX_VALUE; style = "-fx-text-fill: #e17055;"
-            setOnAction { SessionManager.logout(); EmkApplication.navigateTo(RoleSelectScreen()) }
+            setOnAction { SessionManager.logout(); EmkApplication.navigateTo(LoginScreen()) }
         }
         val bottomBox = VBox(logoutBtn).apply { padding = Insets(8.0) }
 
@@ -479,5 +481,81 @@ class StudentDashboard : HBox() {
         }
 
         setContent(ScrollPane(container).apply { isFitToWidth = true; hbarPolicy = ScrollPane.ScrollBarPolicy.NEVER })
+    }
+
+    // ===================== ПРОФИЛЬ =====================
+    private fun showProfile() {
+        val user = SessionManager.currentUser ?: return
+        val container = VBox(20.0).apply { padding = Insets(32.0); maxWidth = 500.0 }
+
+        val header = Label("Профиль").apply { styleClass.add("label-title") }
+        val roleLabel = Label("Роль: Ученик").apply { styleClass.add("label-secondary") }
+
+        // Смена логина
+        val loginSection = Label("Логин").apply { styleClass.add("label-subtitle"); padding = Insets(12.0, 0.0, 0.0, 0.0) }
+        val loginField = TextField(user.login).apply { promptText = "Логин" }
+        val loginError = Label().apply { style = "-fx-text-fill: #e17055; -fx-font-size: 13px;"; isVisible = false }
+        val loginSuccess = Label().apply { style = "-fx-text-fill: #00b894; -fx-font-size: 13px;"; isVisible = false }
+
+        val saveLoginBtn = Button("Сохранить логин").apply {
+            styleClass.addAll("button", "btn-primary"); prefWidth = 300.0
+            setOnAction {
+                loginError.isVisible = false; loginSuccess.isVisible = false
+                val newLogin = loginField.text.trim()
+                if (newLogin.isEmpty()) { loginError.text = "Логин не может быть пустым"; loginError.isVisible = true; return@setOnAction }
+                if (newLogin.length < 3) { loginError.text = "Логин — минимум 3 символа"; loginError.isVisible = true; return@setOnAction }
+                if (newLogin == user.login) { loginSuccess.text = "Логин не изменился"; loginSuccess.isVisible = true; return@setOnAction }
+                val ok = AuthService.changeLogin(user.id, newLogin)
+                if (ok) {
+                    user.login = newLogin
+                    loginSuccess.text = "Логин изменён"; loginSuccess.isVisible = true
+                } else {
+                    loginError.text = "Этот логин уже занят"; loginError.isVisible = true
+                }
+            }
+        }
+
+        // Смена пароля
+        val passSection = Label("Смена пароля").apply { styleClass.add("label-subtitle"); padding = Insets(16.0, 0.0, 0.0, 0.0) }
+        val oldPassField = PasswordField().apply { promptText = "Текущий пароль" }
+        val newPassField = PasswordField().apply { promptText = "Новый пароль" }
+        val confirmPassField = PasswordField().apply { promptText = "Подтверждение нового пароля" }
+        val passError = Label().apply { style = "-fx-text-fill: #e17055; -fx-font-size: 13px;"; isVisible = false }
+        val passSuccess = Label().apply { style = "-fx-text-fill: #00b894; -fx-font-size: 13px;"; isVisible = false }
+
+        val changePassBtn = Button("Сменить пароль").apply {
+            styleClass.addAll("button", "btn-primary"); prefWidth = 300.0
+            setOnAction {
+                passError.isVisible = false; passSuccess.isVisible = false
+                val oldP = oldPassField.text.trim()
+                val newP = newPassField.text.trim()
+                val confP = confirmPassField.text.trim()
+                if (oldP.isEmpty() || newP.isEmpty()) { passError.text = "Заполните все поля"; passError.isVisible = true; return@setOnAction }
+                if (newP.length < 4) { passError.text = "Новый пароль — минимум 4 символа"; passError.isVisible = true; return@setOnAction }
+                if (newP != confP) { passError.text = "Пароли не совпадают"; passError.isVisible = true; return@setOnAction }
+                val ok = AuthService.changePassword(user.id, oldP, newP)
+                if (ok) {
+                    passSuccess.text = "Пароль успешно изменён"; passSuccess.isVisible = true
+                    oldPassField.clear(); newPassField.clear(); confirmPassField.clear()
+                } else {
+                    passError.text = "Неверный текущий пароль"; passError.isVisible = true
+                }
+            }
+        }
+
+        container.children.addAll(
+            header, roleLabel,
+            loginSection,
+            Label("Логин").apply { styleClass.add("label-heading") }, loginField,
+            loginError, loginSuccess, saveLoginBtn,
+            passSection,
+            Label("Текущий пароль").apply { styleClass.add("label-heading") }, oldPassField,
+            Label("Новый пароль").apply { styleClass.add("label-heading") }, newPassField,
+            Label("Подтверждение").apply { styleClass.add("label-heading") }, confirmPassField,
+            passError, passSuccess,
+            Region().apply { prefHeight = 4.0 },
+            changePassBtn
+        )
+        setContent(container)
     }
 }

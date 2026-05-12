@@ -28,7 +28,7 @@ class AdminDashboard : HBox() {
             style = "-fx-border-color: #3d3d5c; -fx-border-width: 0 0 1 0;"
         }
 
-        val menuItems = listOf("Сводка", "Хостинги", "Курсы", "Ученики")
+        val menuItems = listOf("Сводка", "Пользователи", "Хостинги", "Курсы")
 
         val menuButtons = menuItems.map { label ->
             Button(label).apply {
@@ -37,9 +37,9 @@ class AdminDashboard : HBox() {
                     setActiveButton(this)
                     when (label) {
                         "Сводка" -> showSummary()
+                        "Пользователи" -> showUsers()
                         "Хостинги" -> showHostings()
                         "Курсы" -> showCourses()
-                        "Ученики" -> showStudents()
                     }
                 }
             }
@@ -47,7 +47,7 @@ class AdminDashboard : HBox() {
 
         val logoutBtn = Button("Выйти").apply {
             styleClass.addAll("sidebar-item"); style = "-fx-text-fill: #f87171;"
-            setOnAction { SessionManager.logout(); EmkApplication.navigateTo(RoleSelectScreen()) }
+            setOnAction { SessionManager.logout(); EmkApplication.navigateTo(LoginScreen()) }
         }
         val spacer = Region().apply { VBox.setVgrow(this, Priority.ALWAYS) }
 
@@ -242,36 +242,150 @@ class AdminDashboard : HBox() {
         contentArea.children.setAll(ScrollPane(container).apply { isFitToWidth = true })
     }
 
-    private fun showStudents() {
+    private fun showUsers() {
         val container = VBox(20.0).apply { padding = Insets(32.0) }
-        val header = Label("Все ученики").apply { styleClass.add("label-title") }
+        val header = Label("Управление пользователями").apply { styleClass.add("label-title") }
 
-        val students = AdminService.getAllStudents()
-        val subtitle = Label("Всего учеников: ${students.size}").apply { styleClass.add("label-secondary") }
+        val currentUserId = SessionManager.currentUser?.id ?: 0
+        val allUsers = AdminService.getAllUsers().filter { it.id != currentUserId }
+        val subtitle = Label("Всего пользователей: ${allUsers.size}").apply { styleClass.add("label-secondary") }
 
-        val searchField = TextField().apply { promptText = "Поиск по логину..."; prefWidth = 300.0 }
+        val searchField = TextField().apply { promptText = "Поиск по логину..."; prefWidth = 350.0 }
 
-        val table = TableView<ru.bmstu.emk.domain.User>().apply {
-            prefHeight = 500.0
-            val idCol = TableColumn<ru.bmstu.emk.domain.User, String>("ID").apply {
-                setCellValueFactory { javafx.beans.property.SimpleStringProperty(it.value.id.toString()) }; prefWidth = 60.0
-            }
-            val loginCol = TableColumn<ru.bmstu.emk.domain.User, String>("Логин").apply {
-                setCellValueFactory { javafx.beans.property.SimpleStringProperty(it.value.login) }; prefWidth = 200.0
-            }
-            val roleCol = TableColumn<ru.bmstu.emk.domain.User, String>("Роль").apply {
-                setCellValueFactory { javafx.beans.property.SimpleStringProperty(it.value.role) }; prefWidth = 120.0
-            }
-            columns.addAll(idCol, loginCol, roleCol)
-            items.addAll(students)
+        val listBox = VBox(0.0).apply {
+            style = "-fx-background-color: #1c1d2b; -fx-background-radius: 8; -fx-border-color: #2a2b3d; -fx-border-radius: 8;"
         }
+
+        fun renderList(users: List<ru.bmstu.emk.domain.User>) {
+            listBox.children.clear()
+            for ((i, u) in users.withIndex()) {
+                val roleName = when (u.role) { "STUDENT" -> "Ученик"; "TEACHER" -> "Преподаватель"; "ADMIN" -> "Администратор"; else -> u.role }
+                val badgeClass = when (u.role) { "TEACHER" -> "badge-green"; "ADMIN" -> "badge-red"; else -> "badge-blue" }
+
+                val loginLabel = Label(u.login).apply { style = "-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #dfe6ee;" }
+                val roleLabel = Label(roleName).apply { styleClass.addAll("badge", badgeClass) }
+                val idLabel = Label("ID: ${u.id}").apply { styleClass.add("label-muted") }
+
+                val infoBox = VBox(4.0, HBox(10.0, loginLabel, roleLabel).apply { alignment = Pos.CENTER_LEFT }, idLabel)
+                HBox.setHgrow(infoBox, Priority.ALWAYS)
+
+                val buttonsBox = HBox(8.0).apply { alignment = Pos.CENTER_RIGHT }
+
+                when (u.role) {
+                    "STUDENT" -> {
+                        buttonsBox.children.add(Button("Преподаватель").apply {
+                            styleClass.addAll("button", "btn-primary", "btn-sm")
+                            setOnAction { showPromoteForm(u.id, u.login) }
+                        })
+                        buttonsBox.children.add(Button("Админ").apply {
+                            styleClass.addAll("button", "btn-sm")
+                            style = "-fx-background-color: #c0392b; -fx-text-fill: white;"
+                            setOnAction {
+                                val ok = AdminService.promoteToAdmin(u.id)
+                                if (ok) showUsers()
+                            }
+                        })
+                    }
+                    "TEACHER" -> {
+                        buttonsBox.children.add(Button("В ученики").apply {
+                            styleClass.addAll("button", "btn-danger", "btn-sm")
+                            setOnAction {
+                                val ok = AdminService.demoteToStudent(u.id)
+                                if (!ok) {
+                                    val alert = Alert(Alert.AlertType.WARNING,
+                                        "Невозможно понизить: у преподавателя есть курсы", ButtonType.OK)
+                                    alert.title = "Ошибка"; alert.showAndWait()
+                                } else {
+                                    showUsers()
+                                }
+                            }
+                        })
+                        buttonsBox.children.add(Button("Админ").apply {
+                            styleClass.addAll("button", "btn-sm")
+                            style = "-fx-background-color: #c0392b; -fx-text-fill: white;"
+                            setOnAction {
+                                val ok = AdminService.promoteToAdmin(u.id)
+                                if (!ok) {
+                                    val alert = Alert(Alert.AlertType.WARNING,
+                                        "Невозможно назначить: у преподавателя есть курсы", ButtonType.OK)
+                                    alert.title = "Ошибка"; alert.showAndWait()
+                                } else {
+                                    showUsers()
+                                }
+                            }
+                        })
+                    }
+                    "ADMIN" -> {
+                        buttonsBox.children.add(Button("В ученики").apply {
+                            styleClass.addAll("button", "btn-danger", "btn-sm")
+                            setOnAction {
+                                val ok = AdminService.demoteToStudent(u.id)
+                                if (ok) showUsers()
+                            }
+                        })
+                        buttonsBox.children.add(Button("Преподаватель").apply {
+                            styleClass.addAll("button", "btn-primary", "btn-sm")
+                            setOnAction { showPromoteForm(u.id, u.login) }
+                        })
+                    }
+                }
+
+                val row = HBox(16.0, infoBox, buttonsBox).apply {
+                    alignment = Pos.CENTER_LEFT
+                    padding = Insets(12.0, 20.0, 12.0, 20.0)
+                    if (i < users.size - 1) style = "-fx-border-color: #222336; -fx-border-width: 0 0 1 0;"
+                }
+                row.styleClass.add("list-row")
+                listBox.children.add(row)
+            }
+            if (users.isEmpty()) {
+                listBox.children.add(Label("Пользователи не найдены").apply {
+                    styleClass.add("label-muted"); padding = Insets(20.0)
+                })
+            }
+        }
+
+        renderList(allUsers)
 
         searchField.textProperty().addListener { _, _, newVal ->
-            val filtered = students.filter { it.login.contains(newVal, ignoreCase = true) }
-            table.items.setAll(filtered)
+            val filtered = allUsers.filter { it.login.contains(newVal, ignoreCase = true) }
+            renderList(filtered)
         }
 
-        container.children.addAll(header, subtitle, searchField, table)
-        contentArea.children.setAll(ScrollPane(container).apply { isFitToWidth = true })
+        container.children.addAll(header, subtitle, searchField, listBox)
+        contentArea.children.setAll(ScrollPane(container).apply { isFitToWidth = true; hbarPolicy = ScrollPane.ScrollBarPolicy.NEVER })
+    }
+
+    private fun showPromoteForm(userId: Long, userLogin: String) {
+        val container = VBox(16.0).apply { padding = Insets(32.0); maxWidth = 500.0 }
+        val backBtn = Button("← Назад").apply { styleClass.addAll("button", "btn-ghost"); setOnAction { showUsers() } }
+        val header = Label("Назначение преподавателем").apply { styleClass.add("label-title") }
+        val info = Label("Пользователь: $userLogin").apply { styleClass.add("label-secondary") }
+
+        val nameField = TextField().apply { promptText = "ФИО преподавателя (например, Иванов И.И.)" }
+        val emailField = TextField().apply { promptText = "Email" }
+
+        val errorLabel = Label().apply { style = "-fx-text-fill: #e17055; -fx-font-size: 13px;"; isVisible = false }
+
+        val saveBtn = Button("Назначить").apply {
+            styleClass.addAll("button", "btn-primary"); prefWidth = 300.0
+            setOnAction {
+                val name = nameField.text.trim()
+                val email = emailField.text.trim()
+                if (name.isEmpty()) { errorLabel.text = "Введите ФИО"; errorLabel.isVisible = true; return@setOnAction }
+                if (email.isEmpty()) { errorLabel.text = "Введите email"; errorLabel.isVisible = true; return@setOnAction }
+                val ok = AdminService.promoteToTeacher(userId, name, email)
+                if (ok) showUsers()
+                else { errorLabel.text = "Ошибка назначения"; errorLabel.isVisible = true }
+            }
+        }
+
+        container.children.addAll(backBtn, header, info,
+            Region().apply { prefHeight = 8.0 },
+            Label("ФИО").apply { styleClass.add("label-heading") }, nameField,
+            Label("Email").apply { styleClass.add("label-heading") }, emailField,
+            errorLabel,
+            Region().apply { prefHeight = 8.0 }, saveBtn)
+        contentArea.children.setAll(container)
     }
 }

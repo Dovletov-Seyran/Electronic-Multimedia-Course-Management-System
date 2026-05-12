@@ -45,6 +45,77 @@ object AuthService {
         }
     }
 
+    fun changeLogin(userId: Long, newLogin: String): Boolean {
+        val session = HibernateUtil.sessionFactory.openSession()
+        val tx = session.beginTransaction()
+        return try {
+            // Проверяем уникальность
+            val existing = session.createQuery(
+                "FROM User u WHERE u.login = :login AND u.id != :uid", User::class.java
+            ).setParameter("login", newLogin).setParameter("uid", userId).uniqueResult()
+            if (existing != null) return false
+
+            val user = session.get(User::class.java, userId) ?: return false
+            user.login = newLogin
+            session.merge(user)
+            tx.commit()
+            true
+        } catch (e: Exception) { tx.rollback(); false }
+        finally { session.close() }
+    }
+
+    fun userExists(login: String): Boolean {
+        val session = HibernateUtil.sessionFactory.openSession()
+        return try {
+            session.createQuery(
+                "SELECT COUNT(u) FROM User u WHERE u.login = :login", Long::class.java
+            ).setParameter("login", login).singleResult > 0
+        } finally { session.close() }
+    }
+
+    fun changePassword(userId: Long, oldPassword: String, newPassword: String): Boolean {
+        val session = HibernateUtil.sessionFactory.openSession()
+        val tx = session.beginTransaction()
+        return try {
+            val user = session.get(User::class.java, userId) ?: return false
+            if (user.password != oldPassword) return false
+            user.password = newPassword
+            session.merge(user)
+            tx.commit()
+            true
+        } catch (e: Exception) { tx.rollback(); false }
+        finally { session.close() }
+    }
+
+    fun resetPassword(login: String, newPassword: String): Boolean {
+        val session = HibernateUtil.sessionFactory.openSession()
+        val tx = session.beginTransaction()
+        return try {
+            val user = session.createQuery(
+                "FROM User u WHERE u.login = :login", User::class.java
+            ).setParameter("login", login).uniqueResult() ?: return false
+            user.password = newPassword
+            session.merge(user)
+            tx.commit()
+            true
+        } catch (e: Exception) { tx.rollback(); false }
+        finally { session.close() }
+    }
+
+    fun updateTeacherInfo(teacherId: Long, fullName: String, email: String): Boolean {
+        val session = HibernateUtil.sessionFactory.openSession()
+        val tx = session.beginTransaction()
+        return try {
+            val teacher = session.get(Teacher::class.java, teacherId) ?: return false
+            teacher.fullName = fullName
+            teacher.email = email
+            session.merge(teacher)
+            tx.commit()
+            true
+        } catch (e: Exception) { tx.rollback(); false }
+        finally { session.close() }
+    }
+
     fun getTeacherByUser(user: User): Teacher? {
         val session = HibernateUtil.sessionFactory.openSession()
         return try {
